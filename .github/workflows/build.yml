@@ -1,0 +1,43 @@
+name: Build zhwnl
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build dylib
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang -arch arm64 -arch arm64e \
+            -isysroot $SDK \
+            -miphoneos-version-min=14.0 \
+            -fobjc-arc \
+            -shared \
+            -fPIC \
+            -framework Foundation \
+            -framework UIKit \
+            -framework CoreFoundation \
+            -lobjc \
+            -undefined dynamic_lookup \
+            -install_name /Library/MobileSubstrate/DynamicLibraries/zhwnl.dylib \
+            -o zhwnl.dylib \
+            Tweak.m
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhwnl
+          path: zhwnl.dylib
