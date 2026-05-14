@@ -2,12 +2,20 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-// 返回nil的通用替换实现
+// UIView子类返回空View，避免nil导致崩溃
+static id returnEmptyView(id self, SEL _cmd, ...) {
+    UIView *v = [[UIView alloc] initWithFrame:CGRectZero];
+    v.hidden = YES;
+    v.userInteractionEnabled = NO;
+    return v;
+}
+
+// 纯数据对象返回nil（不是View，nil安全）
 static id returnNil(id self, SEL _cmd, ...) {
     return nil;
 }
 
-// 返回0的通用替换实现
+// 返回0
 static NSInteger returnZero(id self, SEL _cmd, ...) {
     return 0;
 }
@@ -17,7 +25,7 @@ static void doNothing(id self, SEL _cmd, ...) {
     return;
 }
 
-// 返回 apiVersion = "0"
+// apiVersion返回"0"
 static NSString* fakeApiVersion(id self, SEL _cmd) {
     return @"0";
 }
@@ -33,10 +41,9 @@ static void hookClass(const char *className, SEL sel, IMP newIMP, const char *ty
     }
 }
 
-__attribute__((constructor))
-static void zhwnl_init(void) {
+static void doHook(void) {
 
-    // ── 穿山甲 CSJ ──────────────────────────────
+    // ── 穿山甲 CSJ（数据对象，返回nil安全）──────────
     hookClass("CSJNativeAd",
         @selector(init), (IMP)returnNil, "@@:");
     hookClass("CSJNativeAd",
@@ -57,9 +64,9 @@ static void zhwnl_init(void) {
     hookClass("CSJNativeExpressRewardedVideoAd",
         @selector(init), (IMP)returnNil, "@@:");
 
-    // ── 广点通 GDT ──────────────────────────────
+    // ── 广点通 GDT（数据对象，返回nil安全）──────────
     hookClass("GDTAdDLView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
     hookClass("GDTAdDLView",
         @selector(setAdConfig:), (IMP)doNothing, "v@:@");
     hookClass("GDTAdDLView",
@@ -71,54 +78,53 @@ static void zhwnl_init(void) {
     hookClass("GDTAdServiceParams",
         @selector(init), (IMP)returnNil, "@@:");
 
-    // ── 万年历开屏广告 ───────────────────────────
+    // ── 万年历广告View（全部返回空View）─────────────
     hookClass("ET3rdADSplash",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
     hookClass("ET3rdADSplash",
-        NSSelectorFromString(@"initWithFrame:withType:"), (IMP)returnNil, "@@:{CGRect=}l");
+        NSSelectorFromString(@"initWithFrame:withType:"), (IMP)returnEmptyView, "@@:{CGRect=}l");
 
-    // ── 首页引导广告 ─────────────────────────────
     hookClass("ETHomeCardGuideView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
 
-    // ── 拖拽广告 ─────────────────────────────────
     hookClass("ETMineDragADView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
     hookClass("ETMineDragADView",
         NSSelectorFromString(@"refreshADView"), (IMP)doNothing, "v@:");
 
-    // ── 天气广告 Cell ────────────────────────────
     hookClass("ETWeatherDSPADViewCell",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
     hookClass("ETWeatherDSPADViewCell",
         NSSelectorFromString(@"setWeatherADBean:"), (IMP)doNothing, "v@:@");
 
-    // ── 日历滑动广告手势 ──────────────────────────
     hookClass("ETRootCalendarFlowView",
         NSSelectorFromString(@"handleViewPanGesture:"), (IMP)doNothing, "v@:@");
 
-    // ── 黄历内容广告 Section ──────────────────────
-    hookClass("ETHuangliContentViewController",
-        @selector(numberOfSectionsInTableView:), (IMP)returnZero, "l@:@");
-
-    // ── 日历 View 广告 ────────────────────────────
+    // numberOfSections返回0可能引起崩溃，改为返回原始结果的安全处理
+    // 这里不hook，只hook广告相关的setAdXxx
     hookClass("ETCalendarView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
 
-    // ── 单日卡片广告 ──────────────────────────────
     hookClass("ETOneDayCardView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
 
-    // ── 版本更新弹窗 ──────────────────────────────
     hookClass("ETVersionUpdateAlertView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
     hookClass("ETVersionUpdateAlertView",
         NSSelectorFromString(@"setUpdate:"), (IMP)doNothing, "v@:@");
 
-    // ── 广告动图组件 ──────────────────────────────
     hookClass("FLPatch",
         NSSelectorFromString(@"apiVersion"), (IMP)fakeApiVersion, "@@:");
 
     hookClass("FLAnimatedImageView",
-        @selector(initWithFrame:), (IMP)returnNil, "@@:{CGRect=}");
+        @selector(initWithFrame:), (IMP)returnEmptyView, "@@:{CGRect=}");
+}
+
+__attribute__((constructor))
+static void zhwnl_init(void) {
+    // 延迟1秒，等App类全部加载完再hook
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        doHook();
+    });
 }
